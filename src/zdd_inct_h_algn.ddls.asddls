@@ -7,7 +7,7 @@
     sizeCategory: #S,
     dataClass: #MIXED
 }
-define view entity ZDD_inct_h_ALGN as select from zdt_inct_h_lgl
+define view entity ZDD_inct_h_ALGN as select from zdt_inct_h_algn
     association to parent Z_R_INC_ALGN as _Incidente on $projection.IncUUID = _Incidente.IncUuid
 {
       key his_uuid          as HisUUID,
