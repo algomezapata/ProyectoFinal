@@ -5,9 +5,9 @@
                      title:          { type: #STANDARD,
                                        label: 'Incidents',
                                        value: 'IncidentID' } },
-             presentationVariant: [{ sortOrder: [{ by: 'IncidentID',
-                                          direction: #ASC }],
-                              visualizations: [{ type: #AS_LINEITEM }] }] }
+       presentationVariant: [{ sortOrder: [{ by: 'IncidentID',
+                                             direction: #ASC }],
+                               visualizations: [{ type: #AS_LINEITEM }] }] }
 
 annotate entity Z_C_INC_ALGN
     with 
@@ -24,21 +24,22 @@ annotate entity Z_C_INC_ALGN
                 label:         'History',
                 position:      20,
                 targetElement: '_Historia'}]
-  @UI.hidden: true
-  @UI: {lineItem: [{ position: 10,
+
+  @UI: { lineItem: [{ position: 10,
                importance: #HIGH,
                label: 'IncUUID'},
                { type: #FOR_ACTION,
                  dataAction: 'changeStatus',
                  label: 'Change Status',
                  position: 10 }],
-  identification: [{ position: 10,
-                     label: 'IncUUID' },
-               { type: #FOR_ACTION,
-                 dataAction: 'changeStatus',
-                 label: 'Change Status',
-                 position: 10 } ],
-  selectionField: [{ position: 10 }]}
+         identification: [{ position: 10,
+                             label: 'IncUUID' },
+                       { type: #FOR_ACTION,
+                         dataAction: 'changeStatus',
+                         label: 'Change Status',
+                         position: 10 } ],
+         selectionField: [{ position: 10 }]}
+  @UI.hidden: true
   IncUuid;
 
   @UI: {lineItem: [{ position: 20,
@@ -59,7 +60,7 @@ annotate entity Z_C_INC_ALGN
   Description;
 
   @Consumption.valueHelpDefinition: [ {
-    //entity.name: 'zdd_status_vh_lgl', "Value Help
+    entity.name: 'zcds_vh_status_algn', //Value Help
     entity.element: 'StatusCode',
     useForValidation: true
   } ]
@@ -70,7 +71,7 @@ annotate entity Z_C_INC_ALGN
   Status;
 
   @Consumption.valueHelpDefinition: [ {
-    //entity.name: 'zdd_priority_vh_lgl', "Value Help
+    entity.name: 'zcds_vh_PRIORIT_ALGN', //Value Help
     entity.element: 'PriorityCode',
     useForValidation: true
   } ]
