@@ -1,0 +1,18 @@
+interface;
+use draft;
+
+define behavior for Z_I_INC_ALGN alias IncidentesI
+{
+  use create;
+  use update;
+  use delete;
+
+  use action changeStatus;
+
+  use action Activate;
+  use action Discard;
+  use action Edit;
+  use action Resume;
+  use action Prepare;
+
+}

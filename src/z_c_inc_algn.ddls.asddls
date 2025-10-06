@@ -1,5 +1,5 @@
 @AccessControl.authorizationCheck: #NOT_REQUIRED
-@EndUserText.label: 'Incidentes Consumption Entity'
+@EndUserText.label: 'Incidentes Consumption View'
 @Metadata.allowExtensions: true
 define root view entity Z_C_INC_ALGN 
 provider contract transactional_query
@@ -19,5 +19,5 @@ as projection on Z_R_INC_ALGN
     LocalLastChangedAt,
     LastChangedAt,
     /* Associations */
-    _Historia
+    _Historia : redirected to composition child Z_C_INCT_H_ALGN
 }

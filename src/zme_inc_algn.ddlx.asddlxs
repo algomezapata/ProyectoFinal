@@ -5,7 +5,7 @@
                      title:          { type: #STANDARD,
                                        label: 'Incidents',
                                        value: 'IncidentID' } },
-       presentationVariant: [{ sortOrder: [{ by: 'IncidentID',
+       presentationVariant: [{ sortOrder: [{ by: 'IncidentId',
                                              direction: #ASC }],
                                visualizations: [{ type: #AS_LINEITEM }] }] }
 

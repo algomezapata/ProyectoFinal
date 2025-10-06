@@ -1,0 +1,5 @@
+@EndUserText.label: 'Incidentes'
+define service ZSD_Incidentes_ALGN {
+  expose Z_C_INC_ALGN    as Incidentes;
+  expose Z_C_INCT_H_ALGN as Historia;
+}
