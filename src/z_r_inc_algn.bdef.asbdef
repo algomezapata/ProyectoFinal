@@ -33,7 +33,8 @@ authorization master ( global,instance )
   field (mandatory)
    title,
    Description,
-   Priority;
+   Priority,
+   CreationDate;
 
   action ( features : instance, authorization : update ) changeStatus
     parameter ZAE_CAMBIOESTATUS_ALGN result [1] $self;
@@ -41,6 +42,12 @@ authorization master ( global,instance )
   side effects { action changeStatus affects $self; }
 
   internal action setHistory;
+
+  validation validateTitle on save {create; field title; }
+  validation validateDescription on save {create; field Description; }
+  validation validatePriority on save {create; field Priority; }
+  validation validateCreationDate on save {create; field CreationDate; }
+  validation validateStatus on save {create; field Status; }
 
   determination setDefaultHistory on save { create; }
 
