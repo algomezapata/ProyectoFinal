@@ -113,10 +113,7 @@ CLASS lhc_Incidentes IMPLEMENTATION.
                                            requested_authorizations-%action-Edit = if_abap_behv=>mk-on
                                       THEN abap_true
                                       ELSE abap_false ).
-**  Se valida si se realizara alguna eliminación
-*   lv_update = COND #( WHEN  requested_authorizations-%delete = if_abap_behv=>mk-on
-*                                     THEN abap_true
-*                                     ELSE abap_false ).
+
 * Se obtiene el nombre del Usuario
     DATA(lv_tecnical_name) = cl_abap_context_info=>get_user_technical_name(  ).
 
@@ -134,18 +131,20 @@ CLASS lhc_Incidentes IMPLEMENTATION.
 *                                                                   gcv_status = lv_status_text
                                                                  gcv_severity = if_abap_behv_message=>severity-error )
                           %element-status = if_abap_behv=>mk-on
-*                            %state_area =  'VALIDATE_COMPONENT'
                            ) TO reported-incidentes.
         ENDIF.
       ENDIF.
 
 
+
       APPEND VALUE #( LET lv_update_auth  = COND #( when lv_update_check eq abap_true
                                                      then if_abap_behv=>auth-allowed
                                                      ELSE if_abap_behv=>auth-unauthorized  )
+
                       in %tky     = ls_incident-%tky
-                         %update  = lv_update_check
-                         %action-Edit = lv_update_check ) to result.
+                         %update  = lv_update_auth
+*                         %action-edit = lv_update_auth
+                         ) to result.
 
 
 
@@ -413,18 +412,141 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD validateCreationDate.
+*   Leer entidades
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+     ENTITY Incidentes
+     FIELDS ( CreationDate
+              Status ) WITH CORRESPONDING #( keys )
+     RESULT DATA(incidentes).
+
+    LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incidente>).
+
+        "Se valida el campo Creación de Fecha no se encuentre vacio
+        IF <incidente>-CreationDate IS INITIAL.
+            APPEND VALUE #( %tky = <incidente>-%tky ) to failed-incidentes.
+
+              APPEND VALUE #( %tky = <incidente>-%tky
+                              %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_fecha_creacion
+*                                                                       gcv_status = lv_status_text
+                                                                     gcv_severity = if_abap_behv_message=>severity-error )
+                              %element-status = if_abap_behv=>mk-on
+                              %state_area =  'VALIDATE_COMPONENT'
+                               ) TO reported-incidentes.
+        ENDIF.
+
+    ENDLOOP.
+
   ENDMETHOD.
 
   METHOD validateDescription.
+
+*   Leer entidades
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+     ENTITY Incidentes
+     FIELDS ( CreationDate
+              Status ) WITH CORRESPONDING #( keys )
+     RESULT DATA(incidentes).
+
+    LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incidente>).
+
+        "Se valida el campo descripción no se encuentre vacio
+        IF <incidente>-Description IS INITIAL.
+            APPEND VALUE #( %tky = <incidente>-%tky ) to failed-incidentes.
+
+              APPEND VALUE #( %tky = <incidente>-%tky
+                              %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_desc
+*                                                                       gcv_status = lv_status_text
+                                                                     gcv_severity = if_abap_behv_message=>severity-error )
+                              %element-status = if_abap_behv=>mk-on
+                              %state_area =  'VALIDATE_COMPONENT'
+                               ) TO reported-incidentes.
+        ENDIF.
+
+    ENDLOOP.
+
+
   ENDMETHOD.
 
   METHOD validatePriority.
+*   Leer entidades
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+     ENTITY Incidentes
+     FIELDS ( CreationDate
+              Status ) WITH CORRESPONDING #( keys )
+     RESULT DATA(incidentes).
+
+    LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incidente>).
+
+        "Se valida el campo prioridad no se encuentre  vacio
+        IF <incidente>-Priority IS INITIAL.
+            APPEND VALUE #( %tky = <incidente>-%tky ) to failed-incidentes.
+
+              APPEND VALUE #( %tky = <incidente>-%tky
+                              %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_prioridad
+*                                                                       gcv_status = lv_status_text
+                                                                     gcv_severity = if_abap_behv_message=>severity-error )
+                              %element-status = if_abap_behv=>mk-on
+                              %state_area =  'VALIDATE_COMPONENT'
+                               ) TO reported-incidentes.
+        ENDIF.
+
+    ENDLOOP.
+
+
   ENDMETHOD.
 
   METHOD validateTitle.
+
+*   Leer entidades
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+     ENTITY Incidentes
+     FIELDS ( CreationDate
+              Status ) WITH CORRESPONDING #( keys )
+     RESULT DATA(incidentes).
+
+    LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incidente>).
+
+        "Se valida el campo titulo no se encuentre vacio
+        IF <incidente>-title IS INITIAL.
+            APPEND VALUE #( %tky = <incidente>-%tky ) to failed-incidentes.
+
+              APPEND VALUE #( %tky = <incidente>-%tky
+                              %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_titulo
+*                                                                       gcv_status = lv_status_text
+                                                                     gcv_severity = if_abap_behv_message=>severity-error )
+                              %element-status = if_abap_behv=>mk-on
+                              %state_area =  'VALIDATE_COMPONENT'
+                               ) TO reported-incidentes.
+        ENDIF.
+
+    ENDLOOP.
+
   ENDMETHOD.
 
   METHOD validateStatus.
+*   Leer entidades
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+     ENTITY Incidentes
+     FIELDS ( CreationDate
+              Status ) WITH CORRESPONDING #( keys )
+     RESULT DATA(incidentes).
+
+    LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incidente>).
+
+        "Se valida el campo estatus no se se encuentre vacio
+        IF <incidente>-Status IS INITIAL.
+            APPEND VALUE #( %tky = <incidente>-%tky ) to failed-incidentes.
+
+              APPEND VALUE #( %tky = <incidente>-%tky
+                              %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_estatus2
+*                                                                       gcv_status = lv_status_text
+                                                                     gcv_severity = if_abap_behv_message=>severity-error )
+                              %element-status = if_abap_behv=>mk-on
+                              %state_area =  'VALIDATE_COMPONENT'
+                               ) TO reported-incidentes.
+        ENDIF.
+
+    ENDLOOP.
   ENDMETHOD.
 
 ENDCLASS.

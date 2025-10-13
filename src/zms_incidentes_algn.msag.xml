@@ -20,6 +20,36 @@
      <MSGNR>002</MSGNR>
      <TEXT>Solo el Usuario Administrador puede modificar el estatus del incidente</TEXT>
     </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZMS_INCIDENTES_ALGN</ARBGB>
+     <MSGNR>003</MSGNR>
+     <TEXT>Campo Descripción se encuentra vacio</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZMS_INCIDENTES_ALGN</ARBGB>
+     <MSGNR>004</MSGNR>
+     <TEXT>Campo Prioridad se encuentra vacio</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZMS_INCIDENTES_ALGN</ARBGB>
+     <MSGNR>005</MSGNR>
+     <TEXT>Campo Titulo se encuentra vacio</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZMS_INCIDENTES_ALGN</ARBGB>
+     <MSGNR>006</MSGNR>
+     <TEXT>Campo Estatus se encuentra vacio</TEXT>
+    </T100>
+    <T100>
+     <SPRSL>E</SPRSL>
+     <ARBGB>ZMS_INCIDENTES_ALGN</ARBGB>
+     <MSGNR>007</MSGNR>
+     <TEXT>Campo Fecha Creación se encuentra vacio</TEXT>
+    </T100>
    </T100>
   </asx:values>
  </asx:abap>
