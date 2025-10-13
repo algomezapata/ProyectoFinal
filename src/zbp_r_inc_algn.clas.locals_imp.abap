@@ -2,16 +2,16 @@ CLASS lhc_Incidentes DEFINITION INHERITING FROM cl_abap_behavior_handler.
 
   PUBLIC SECTION.
 
-    CONSTANTS: BEGIN OF mc_status,
-                 open        TYPE  ZE_STATUS VALUE 'OP',
-                 in_progress TYPE  ZE_STATUS VALUE 'IP',
-                 pending     TYPE  ZE_STATUS VALUE 'PE',
-                 completed   TYPE  ZE_STATUS VALUE 'CO',
-                 closed      TYPE  ZE_STATUS VALUE 'CL',
-                 canceled    TYPE  ZE_STATUS VALUE 'CN',
-               END OF mc_status.
+    CONSTANTS: BEGIN OF lc_status,
+                 open        TYPE  ze_status VALUE 'OP',
+                 in_progress TYPE  ze_status VALUE 'IP',
+                 pending     TYPE  ze_status VALUE 'PE',
+                 completed   TYPE  ze_status VALUE 'CO',
+                 closed      TYPE  ze_status VALUE 'CL',
+                 canceled    TYPE  ze_status VALUE 'CN',
+               END OF lc_status.
 
-interfaces: if_oo_adt_classrun.
+    INTERFACES: if_oo_adt_classrun.
 
   PRIVATE SECTION.
 
@@ -56,47 +56,101 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   METHOD get_instance_features.
 
 
-        READ ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
-           ENTITY Incidentes
-             FIELDS ( Status )
-             WITH CORRESPONDING #( keys )
-           RESULT DATA(incidents)
-           FAILED failed.
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+       ENTITY Incidentes
+         FIELDS ( Status )
+         WITH CORRESPONDING #( keys )
+       RESULT DATA(incidents)
+       FAILED failed.
 
 *     Disable changeStatus for Incidents Creation
-        DATA(lv_create_action) = lines( incidents ).
-        IF lv_create_action EQ 1.
-            data(lv_incuuid) = incidents[ 1 ]-IncUUID.
-            SELECT FROM zdt_inct_h_algn
-              FIELDS MAX( his_id ) AS max_his_id
-              WHERE  inc_uuid EQ @lv_incuuid
-                AND  his_uuid IS NOT NULL
-              INTO @DATA(lv_historia_ind).
+    DATA(lv_create_action) = lines( incidents ).
+    IF lv_create_action EQ 1.
+      DATA(lv_incuuid) = incidents[ 1 ]-IncUUID.
+      SELECT FROM zdt_inct_h_algn
+        FIELDS MAX( his_id ) AS max_his_id
+        WHERE  inc_uuid EQ @lv_incuuid
+          AND  his_uuid IS NOT NULL
+        INTO @DATA(lv_historia_ind).
 *          lv_historia_ind = get_history_index( IMPORTING ev_incuuid = incidents[ 1 ]-IncUUID ).
-        ELSE.
-          lv_historia_ind = 1.
-        ENDIF.
+    ELSE.
+      lv_historia_ind = 1.
+    ENDIF.
 
-*        result = VALUE #( FOR incident IN incidents
-*                              ( %tky                   = incident-%tky
-*                                %action-ChangeStatus   = COND #( WHEN incident-Status = mc_status-completed OR
-*                                                                      incident-Status = mc_status-closed    OR
-*                                                                      incident-Status = mc_status-canceled  OR
-*                                                                      lv_historia_ind = 0
-*                                                                 THEN if_abap_behv=>fc-o-disabled
-*                                                                 ELSE if_abap_behv=>fc-o-enabled )
-*
-*                                %assoc-_Historia       = COND #( WHEN incident-Status = mc_status-completed OR
-*                                                                     incident-Status = mc_status-closed    OR
-*                                                                     incident-Status = mc_status-canceled  OR
-*                                                                     lv_historia_ind = 0
-*                                                                THEN if_abap_behv=>fc-o-disabled
-*                                                                ELSE if_abap_behv=>fc-o-enabled )
-*                              ) ).
+    result = VALUE #( FOR incident IN incidents
+                          ( %tky                   = incident-%tky
+                            %action-changeStatus   = COND #( WHEN incident-Status = lc_status-completed OR
+                                                                  incident-Status = lc_status-closed    OR
+                                                                  incident-Status = lc_status-canceled  OR
+                                                                  lv_historia_ind = 0
+                                                             THEN if_abap_behv=>fc-o-disabled
+                                                             ELSE if_abap_behv=>fc-o-enabled )
+
+                            %assoc-_Historia       = COND #( WHEN incident-Status = lc_status-completed OR
+                                                                 incident-Status = lc_status-closed    OR
+                                                                 incident-Status = lc_status-canceled  OR
+                                                                 lv_historia_ind = 0
+                                                            THEN if_abap_behv=>fc-o-disabled
+                                                            ELSE if_abap_behv=>fc-o-enabled )
+                          ) ).
 
   ENDMETHOD.
 
   METHOD get_instance_authorizations.
+
+    DATA: lv_update       TYPE abap_bool,
+          lv_update_check TYPE abap_bool.
+
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+       ENTITY Incidentes
+         FIELDS ( Status )
+         WITH CORRESPONDING #( keys )
+       RESULT DATA(incidents)
+       FAILED failed.
+
+*  Se valida si se realizara alguna actualización
+    lv_update = COND #( WHEN  requested_authorizations-%update = if_abap_behv=>mk-on OR
+                                           requested_authorizations-%action-Edit = if_abap_behv=>mk-on
+                                      THEN abap_true
+                                      ELSE abap_false ).
+**  Se valida si se realizara alguna eliminación
+*   lv_update = COND #( WHEN  requested_authorizations-%delete = if_abap_behv=>mk-on
+*                                     THEN abap_true
+*                                     ELSE abap_false ).
+* Se obtiene el nombre del Usuario
+    DATA(lv_tecnical_name) = cl_abap_context_info=>get_user_technical_name(  ).
+
+
+    LOOP AT incidents INTO DATA(ls_incident).
+      IF lv_update = abap_true.
+*        IF ls_incident-Status = lc_status-in_progress and ls_incident-LocalCreatedBy = lv_tecnical_name or lv_tecnical_name = 'CB9980000366' .
+        IF  lv_tecnical_name = 'CB9980000367' .
+          lv_update_check = abap_true.
+        ELSE.
+          lv_update_check = abap_false.
+*           Se envia mensaje con el estatus con error
+          APPEND VALUE #( %tky = ls_incident-%tky
+                          %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_status2
+*                                                                   gcv_status = lv_status_text
+                                                                 gcv_severity = if_abap_behv_message=>severity-error )
+                          %element-status = if_abap_behv=>mk-on
+*                            %state_area =  'VALIDATE_COMPONENT'
+                           ) TO reported-incidentes.
+        ENDIF.
+      ENDIF.
+
+
+      APPEND VALUE #( LET lv_update_auth  = COND #( when lv_update_check eq abap_true
+                                                     then if_abap_behv=>auth-allowed
+                                                     ELSE if_abap_behv=>auth-unauthorized  )
+                      in %tky     = ls_incident-%tky
+                         %update  = lv_update_check
+                         %action-Edit = lv_update_check ) to result.
+
+
+
+    ENDLOOP.
+
   ENDMETHOD.
 
   METHOD get_global_authorizations.
@@ -104,131 +158,142 @@ CLASS lhc_Incidentes IMPLEMENTATION.
 
   METHOD changeStatus.
 
-*     Declaration of necessary variables
-        DATA: lt_updated_root_entity TYPE TABLE FOR UPDATE Z_R_INC_ALGN,
-              lt_association_entity  TYPE TABLE FOR CREATE Z_R_INC_ALGN\_Historia,
-              lv_status              TYPE ze_status,
-              lv_text                TYPE ze_text,
-              lv_exception           TYPE string,
-              lv_error               TYPE c,
-              ls_incidente_hist      TYPE zdt_inct_h_algn,
-              lv_max_his_id          TYPE ZE_HIS_ID,
-              lv_wrong_status        TYPE ze_status.
+    DATA: lt_updated_root_entity TYPE TABLE FOR UPDATE z_r_inc_algn,
+          lt_association_entity  TYPE TABLE FOR CREATE z_r_inc_algn\_Historia,
+          lv_status              TYPE ze_status,
+          lv_text                TYPE ze_text,
+*          lv_exception           TYPE string,
+          lv_error               TYPE c,
+          ls_incidente_hist      TYPE zdt_inct_h_algn,
+          lv_status_text         TYPE char10.
+
 
 *    * Iterate through the keys records to get parameters for validations
-        READ ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
-             ENTITY Incidentes
-             ALL FIELDS WITH CORRESPONDING #( keys )
-             RESULT DATA(incidentes)
-             FAILED failed.
-
-*    * Get parameters
-        LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incident>).
-*    * Get Status
-          lv_status = keys[ KEY id %tky = <incident>-%tky ]-%param-status.
-
-*    *  It is not possible to change the pending (PE) to Completed (CO) or Closed (CL) status
-          IF <incident>-Status EQ mc_status-pending AND lv_status EQ mc_status-closed OR
-             <incident>-Status EQ mc_status-pending AND lv_status EQ mc_status-completed.
-*    * Set authorizations
-            APPEND VALUE #( %tky = <incident>-%tky ) TO failed-incidentes.
-
-            lv_wrong_status = lv_status.
-*     Customize error messages
-*            APPEND VALUE #( %tky = <incident>-%tky
-*                            %msg = NEW zcl_incident_messages_lgl( textid = zcl_incident_messages_lgl=>status_invalid
-*                                                                status = lv_wrong_status
-*                                                                severity = if_abap_behv_message=>severity-error )
-*                            %state_area = 'VALIDATE_COMPONENT'
-*                             ) TO reported-incidentes.
-
-
-            lv_error = abap_true.
-            EXIT.
-          ENDIF.
-
-          APPEND VALUE #( %tky = <incident>-%tky
-                          ChangedDate = cl_abap_context_info=>get_system_date( )
-                          Status = lv_status ) TO lt_updated_root_entity.
-
-*    * Get Text
-          lv_text = keys[ KEY id %tky = <incident>-%tky ]-%param-text.
-
-            SELECT FROM zdt_inct_h_algn
-              FIELDS MAX( his_id ) AS max_his_id
-              WHERE  inc_uuid EQ @<incident>-IncUUID
-                AND  his_uuid IS NOT NULL
-              INTO @DATA(lv_historia_ind).
-
-*          lv_max_his_id = get_history_index(
-*                      IMPORTING
-*                        ev_incuuid = <incident>-IncUUID ).
-
-          IF lv_historia_ind IS INITIAL.
-            ls_incidente_hist-his_id = 1.
-          ELSE.
-            ls_incidente_hist-his_id = lv_historia_ind + 1.
-          ENDIF.
-
-          ls_incidente_hist-new_status = lv_status.
-          ls_incidente_hist-text = lv_text.
-
-          TRY.
-              ls_incidente_hist-inc_uuid = cl_system_uuid=>create_uuid_x16_static( ).
-            CATCH cx_uuid_error INTO DATA(lo_error).
-              lv_exception = lo_error->get_text(  ).
-          ENDTRY.
-
-          IF ls_incidente_hist-his_id IS NOT INITIAL.
-*
-            APPEND VALUE #( %tky = <incident>-%tky
-                            %target = VALUE #( (  HisUUID = ls_incidente_hist-inc_uuid
-                                                  IncUUID = <incident>-IncUUID
-                                                  HisID = ls_incidente_hist-his_id
-                                                  PreviousStatus = <incident>-Status
-                                                  NewStatus = ls_incidente_hist-new_status
-                                                  Text = ls_incidente_hist-text ) )
-                                                   ) TO lt_association_entity.
-          ENDIF.
-        ENDLOOP.
-        UNASSIGN <incident>.
-
-*    * The process is interrupted because a change of status from pending (PE) to Completed (CO) or Closed (CL) is not permitted.
-        CHECK lv_error IS INITIAL.
-
-*    * Modify status in Root Entity
-        MODIFY ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
-        ENTITY Incidentes
-        UPDATE  FIELDS ( ChangedDate
-                         Status )
-        WITH lt_updated_root_entity.
-
-        FREE incidentes. " Free entries in incidents
-
-        MODIFY ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
          ENTITY Incidentes
-         CREATE BY \_Historia FIELDS ( HisUUID
-                                      IncUUID
-                                      HisID
-                                      PreviousStatus
-                                      NewStatus
-                                      Text )
-            AUTO FILL CID
-            WITH lt_association_entity
-         MAPPED mapped
-         FAILED failed
-         REPORTED reported.
+         ALL FIELDS WITH CORRESPONDING #( keys )
+         RESULT DATA(incidentes)
+         FAILED failed.
 
-*    * Read root entity entries updated
-        READ ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
-        ENTITY Incidentes
-        ALL FIELDS WITH CORRESPONDING #( keys )
-        RESULT incidentes
-        FAILED failed.
 
-*    * Update User Interface
-        result = VALUE #( FOR incident IN incidentes ( %tky = incident-%tky
-                                                      %param = incident ) ).
+    LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incident>).
+
+*     Se obtiene el estatus
+      lv_status = keys[ KEY id %tky = <incident>-%tky ]-%param-status.
+
+*     Validación que el estatus Pending (PE) no pase  Completed (CO) o Closed (CL)
+      IF <incident>-Status EQ lc_status-pending AND lv_status EQ lc_status-closed OR
+         <incident>-Status EQ lc_status-pending AND lv_status EQ lc_status-completed.
+
+*     Set authorizations
+        APPEND VALUE #( %tky = <incident>-%tky ) TO failed-incidentes.
+
+
+*           Se igualan los textos del estado para enviar en mensaje
+        IF lv_status = lc_status-completed.
+          lv_status_text = 'Completed'.
+        ELSE.
+          lv_status_text = 'Closed'.
+        ENDIF.
+*           Se envia mensaje con el estatus con error
+        APPEND VALUE #( %tky = <incident>-%tky
+                        %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_status1
+                                                               gcv_status = lv_status_text
+                                                               gcv_severity = if_abap_behv_message=>severity-error )
+                        %element-status = if_abap_behv=>mk-on
+*                            %state_area =  'VALIDATE_COMPONENT'
+                         ) TO reported-incidentes.
+
+
+        lv_error = abap_true.
+        EXIT.
+      ENDIF.
+
+      APPEND VALUE #( %tky = <incident>-%tky
+                      ChangedDate = cl_abap_context_info=>get_system_date( )
+                      Status = lv_status ) TO lt_updated_root_entity.
+
+*    Se obtiene texto para historial de incidente
+      lv_text = keys[ KEY id %tky = <incident>-%tky ]-%param-text.
+
+*    Se obtiene el ultimo Id del historial del incidente
+      SELECT FROM zdt_inct_h_algn
+        FIELDS MAX( his_id ) AS max_his_id
+        WHERE  inc_uuid EQ @<incident>-IncUUID
+          AND  his_uuid IS NOT NULL
+        INTO @DATA(lv_historia_ind).
+
+
+
+      IF lv_historia_ind IS INITIAL.
+        ls_incidente_hist-his_id = 1. "Si el ID esta vacio se ingresa como el primero
+      ELSE.
+        ls_incidente_hist-his_id = lv_historia_ind + 1. "Si el ID no esta vacio se le suma uno para continuar con la numeración
+      ENDIF.
+
+      ls_incidente_hist-new_status = lv_status. "Se igual nuevo esttus
+      ls_incidente_hist-text = lv_text.         "Se iguala el texto
+
+*     Se obtiene el numero del UUID para el historial
+      TRY.
+          ls_incidente_hist-inc_uuid = cl_system_uuid=>create_uuid_x16_static( ).
+        CATCH cx_uuid_error INTO DATA(lo_error).
+          DATA(lv_exception) = lo_error->get_text(  ).
+      ENDTRY.
+
+*     Se valida que el campo Id no se encuentre vacio
+      IF ls_incidente_hist-his_id IS NOT INITIAL.
+        APPEND VALUE #( %tky = <incident>-%tky
+                        %target = VALUE #( (  HisUUID = ls_incidente_hist-inc_uuid
+                                              IncUUID = <incident>-IncUUID
+                                              HisID = ls_incidente_hist-his_id
+                                              PreviousStatus = <incident>-Status
+                                              NewStatus = ls_incidente_hist-new_status
+                                              Text = ls_incidente_hist-text ) )
+                                               ) TO lt_association_entity.
+      ENDIF.
+    ENDLOOP.
+
+    UNASSIGN <incident>.
+
+*   Se interrumpe el proceso porque el estatus fue cambiado de Pending (PE) a Completed (CO) o Closed (CL) .
+    CHECK lv_error IS INITIAL.
+
+*   Se modifica el estatus en la tabla de Incidentes
+    MODIFY ENTITIES OF z_r_inc_algn IN LOCAL MODE
+    ENTITY Incidentes
+    UPDATE  FIELDS ( ChangedDate
+                     Status )
+    WITH lt_updated_root_entity.
+
+    FREE incidentes. " Free entries in incidents
+
+*   Se modifica la tabla Historial del Incidente
+    MODIFY ENTITIES OF z_r_inc_algn IN LOCAL MODE
+     ENTITY Incidentes
+     CREATE BY \_Historia FIELDS ( HisUUID
+                                  IncUUID
+                                  HisID
+                                  PreviousStatus
+                                  NewStatus
+                                  Text )
+        AUTO FILL CID
+        WITH lt_association_entity
+     MAPPED mapped
+     FAILED failed
+     REPORTED reported.
+
+*   Se recuperan los campos actualizados
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+    ENTITY Incidentes
+    ALL FIELDS WITH CORRESPONDING #( keys )
+    RESULT incidentes
+    FAILED failed.
+
+*   Se retorna los valores nuevos
+    result = VALUE #( FOR incident IN incidentes ( %tky = incident-%tky
+                                                  %param = incident ) ).
+
 
 
   ENDMETHOD.
@@ -236,24 +301,24 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   METHOD setHistory.
 
 ** Declaration of necessary variables
-    DATA: lt_updated_root_entity TYPE TABLE FOR UPDATE Z_R_INC_ALGN,
-          lt_association_entity  TYPE TABLE FOR CREATE Z_R_INC_ALGN\_Historia,
+    DATA: lt_updated_root_entity TYPE TABLE FOR UPDATE z_r_inc_algn,
+          lt_association_entity  TYPE TABLE FOR CREATE z_r_inc_algn\_Historia,
           lv_exception           TYPE string,
-          ls_incidente_hist    TYPE zdt_inct_h_algn.
+          ls_incidente_hist      TYPE zdt_inct_h_algn.
 
 ** Iterate through the keys records to get parameters for validations
-    READ ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
          ENTITY Incidentes
          ALL FIELDS WITH CORRESPONDING #( keys )
          RESULT DATA(incidentes).
 
 ** Get parameters
     LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incident>).
-            SELECT FROM zdt_inct_h_algn
-              FIELDS MAX( his_id ) AS max_his_id
-              WHERE  inc_uuid EQ @<incident>-IncUUID
-                AND  his_uuid IS NOT NULL
-              INTO @DATA(lv_historia_ind).
+      SELECT FROM zdt_inct_h_algn
+        FIELDS MAX( his_id ) AS max_his_id
+        WHERE  inc_uuid EQ @<incident>-IncUUID
+          AND  his_uuid IS NOT NULL
+        INTO @DATA(lv_historia_ind).
 
 
       IF lv_historia_ind IS INITIAL.
@@ -282,7 +347,7 @@ CLASS lhc_Incidentes IMPLEMENTATION.
 
     FREE incidentes. " Free entries in incidents
 
-    MODIFY ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
+    MODIFY ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
      CREATE BY \_Historia FIELDS ( HisUUID
                                   IncUUID
@@ -298,47 +363,49 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   METHOD setDefaultValues.
 
 *     Read root entity entries
-        READ ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
-         ENTITY Incidentes
-         FIELDS ( CreationDate
-                  Status ) WITH CORRESPONDING #( keys )
-         RESULT DATA(incidents).
+    READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
+     ENTITY Incidentes
+     FIELDS ( CreationDate
+              Status ) WITH CORRESPONDING #( keys )
+     RESULT DATA(incidents).
 
-*     This important for logic
-        DELETE incidents WHERE CreationDate IS NOT INITIAL.
+*   Borrar Incidentes con el campo CreationDate vacio
+    DELETE incidents WHERE CreationDate IS NOT INITIAL.
 
-        CHECK incidents IS NOT INITIAL.
+    CHECK incidents IS NOT INITIAL.
 
 *     Se obtiene el ultimo ID
-        SELECT FROM zdt_inct_algn
-          FIELDS MAX( incident_id ) AS max_inct_id
-          WHERE incident_id IS NOT NULL
-          INTO @DATA(lv_last_id).
+    SELECT FROM zdt_inct_algn
+      FIELDS MAX( incident_id ) AS max_inct_id
+      WHERE incident_id IS NOT NULL
+      INTO @DATA(lv_last_id).
 
-        IF lv_last_id IS INITIAL.
-          lv_last_id = 1.
-        ELSE.
-          lv_last_id += 1.
-        ENDIF.
+    IF lv_last_id IS INITIAL.
+      lv_last_id = 1.
+    ELSE.
+      lv_last_id += 1.
+    ENDIF.
 
-*     Modify status in Root Entity
-        MODIFY ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
-          ENTITY Incidentes
-          UPDATE
-          FIELDS ( IncidentID
-                   CreationDate
-                   Status )
-          WITH VALUE #(  FOR incident IN incidents ( %tky = incident-%tky
-                                                     IncidentID = lv_last_id
-                                                     CreationDate = cl_abap_context_info=>get_system_date( )
-                                                     Status       = mc_status-open )  ).
+*     Set valores iniciales
+    MODIFY ENTITIES OF z_r_inc_algn IN LOCAL MODE
+      ENTITY Incidentes
+      UPDATE
+      FIELDS ( IncidentID
+               CreationDate
+               Status )
+      WITH VALUE #(  FOR incident IN incidents ( %tky = incident-%tky
+                                                 IncidentID = lv_last_id
+                                                 CreationDate = cl_abap_context_info=>get_system_date( )
+                                                 Status       = lc_status-open
+                                                 Description = cl_abap_context_info=>get_user_technical_name(  )
+                                                  )  ).
 
   ENDMETHOD.
 
   METHOD setDefaultHistory.
 
 ** Execute internal action to update Flight Date
-    MODIFY ENTITIES OF Z_R_INC_ALGN IN LOCAL MODE
+    MODIFY ENTITIES OF z_r_inc_algn IN LOCAL MODE
     ENTITY Incidentes
     EXECUTE setHistory
        FROM CORRESPONDING #( keys ).
