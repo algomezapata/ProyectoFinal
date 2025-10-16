@@ -54,8 +54,10 @@ ENDCLASS.
 CLASS lhc_Incidentes IMPLEMENTATION.
 
   METHOD get_instance_features.
-
-
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  get_instance_features realizara la validación para deshabilitar el boton de  cambios de Estatus cuando es creación de incidente.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+** Lee las entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
        ENTITY Incidentes
          FIELDS ( Status )
@@ -98,9 +100,13 @@ CLASS lhc_Incidentes IMPLEMENTATION.
 
   METHOD get_instance_authorizations.
 
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  get_instance_authorizations realizara las validaciones por instancia revisando que el usuario sea administrador para poder generar un cambio de estatus.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
     DATA: lv_update       TYPE abap_bool,
           lv_update_check TYPE abap_bool.
 
+** Lee las entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
        ENTITY Incidentes
          FIELDS ( Status )
@@ -120,8 +126,7 @@ CLASS lhc_Incidentes IMPLEMENTATION.
 
     LOOP AT incidents INTO DATA(ls_incident).
       IF lv_update = abap_true.
-*        IF ls_incident-Status = lc_status-in_progress and ls_incident-LocalCreatedBy = lv_tecnical_name or lv_tecnical_name = 'CB9980000366' .
-        IF  lv_tecnical_name = 'CB9980000367' .
+        IF  lv_tecnical_name = 'CB9980000366' .
           lv_update_check = abap_true.
         ELSE.
           lv_update_check = abap_false.
@@ -156,7 +161,9 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD changeStatus.
-
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  changeStatus validara las reglas de negocio para realizar un cambio de estatus.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
     DATA: lt_updated_root_entity TYPE TABLE FOR UPDATE z_r_inc_algn,
           lt_association_entity  TYPE TABLE FOR CREATE z_r_inc_algn\_Historia,
           lv_status              TYPE ze_status,
@@ -167,7 +174,7 @@ CLASS lhc_Incidentes IMPLEMENTATION.
           lv_status_text         TYPE char10.
 
 
-*    * Iterate through the keys records to get parameters for validations
+*   Leer las entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
          ENTITY Incidentes
          ALL FIELDS WITH CORRESPONDING #( keys )
@@ -184,17 +191,17 @@ CLASS lhc_Incidentes IMPLEMENTATION.
       IF <incident>-Status EQ lc_status-pending AND lv_status EQ lc_status-closed OR
          <incident>-Status EQ lc_status-pending AND lv_status EQ lc_status-completed.
 
-*     Set authorizations
+
         APPEND VALUE #( %tky = <incident>-%tky ) TO failed-incidentes.
 
 
-*           Se igualan los textos del estado para enviar en mensaje
+*       Se igualan los textos del estado para enviar en mensaje
         IF lv_status = lc_status-completed.
           lv_status_text = 'Completed'.
         ELSE.
           lv_status_text = 'Closed'.
         ENDIF.
-*           Se envia mensaje con el estatus con error
+*       Se envia mensaje con el estatus con error
         APPEND VALUE #( %tky = <incident>-%tky
                         %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_status1
                                                                gcv_status = lv_status_text
@@ -298,20 +305,21 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD setHistory.
-
-** Declaration of necessary variables
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  seHistory es llamado desde el behavior definition como una acción interna para realizar el registro en el historial de cambios de Estatus
+*  -----------------------------------------------------------------------------------------------------------------------------------------
     DATA: lt_updated_root_entity TYPE TABLE FOR UPDATE z_r_inc_algn,
           lt_association_entity  TYPE TABLE FOR CREATE z_r_inc_algn\_Historia,
           lv_exception           TYPE string,
           ls_incidente_hist      TYPE zdt_inct_h_algn.
 
-** Iterate through the keys records to get parameters for validations
+** Lee las entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
          ENTITY Incidentes
          ALL FIELDS WITH CORRESPONDING #( keys )
          RESULT DATA(incidentes).
 
-** Get parameters
+** Se iteran los incidentes
     LOOP AT incidentes ASSIGNING FIELD-SYMBOL(<incident>).
       SELECT FROM zdt_inct_h_algn
         FIELDS MAX( his_id ) AS max_his_id
@@ -319,19 +327,21 @@ CLASS lhc_Incidentes IMPLEMENTATION.
           AND  his_uuid IS NOT NULL
         INTO @DATA(lv_historia_ind).
 
-
+* Valida si existe ya un registro previo en la tabla de Hstory
       IF lv_historia_ind IS INITIAL.
         ls_incidente_hist-his_id = 1.
       ELSE.
         ls_incidente_hist-his_id = lv_historia_ind + 1.
       ENDIF.
 
+*Se obtiene el valor de UUDID
       TRY.
           ls_incidente_hist-inc_uuid = cl_system_uuid=>create_uuid_x16_static( ).
         CATCH cx_uuid_error INTO DATA(lo_error).
           lv_exception = lo_error->get_text(  ).
       ENDTRY.
 
+*Se mapean parametros para tabla History
       IF ls_incidente_hist-his_id IS NOT INITIAL.
         APPEND VALUE #( %tky = <incident>-%tky
                         %target = VALUE #( (  HisUUID = ls_incidente_hist-inc_uuid
@@ -345,7 +355,7 @@ CLASS lhc_Incidentes IMPLEMENTATION.
     UNASSIGN <incident>.
 
     FREE incidentes. " Free entries in incidents
-
+* Se realiza el Guardado de la información
     MODIFY ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
      CREATE BY \_Historia FIELDS ( HisUUID
@@ -360,8 +370,10 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD setDefaultValues.
-
-*     Read root entity entries
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  setDefaultValues mapea los valores iniciales para la creación del incidente.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+** Lee las entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
      FIELDS ( CreationDate
@@ -402,8 +414,10 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD setDefaultHistory.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  seHistory es llamado desde el behavior definition como una acción interna para realizar el registro en el historial de cambios de Estatus
+*  -----------------------------------------------------------------------------------------------------------------------------------------
 
-** Execute internal action to update Flight Date
     MODIFY ENTITIES OF z_r_inc_algn IN LOCAL MODE
     ENTITY Incidentes
     EXECUTE setHistory
@@ -412,6 +426,9 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD validateCreationDate.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  validateCreationDate realiza la validación del Campo Creación de Fecha
+*  -----------------------------------------------------------------------------------------------------------------------------------------
 *   Leer entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
@@ -439,7 +456,9 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD validateDescription.
-
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  validateDescription realiza la validación del Campo Descripción
+*  -----------------------------------------------------------------------------------------------------------------------------------------
 *   Leer entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
@@ -468,6 +487,9 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD validatePriority.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  validatePriority realiza la validación del Campo Prioridad
+*  -----------------------------------------------------------------------------------------------------------------------------------------
 *   Leer entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
@@ -496,7 +518,9 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD validateTitle.
-
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  validateTitle realiza la validación del Campo Titulo
+*  -----------------------------------------------------------------------------------------------------------------------------------------
 *   Leer entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
@@ -524,6 +548,9 @@ CLASS lhc_Incidentes IMPLEMENTATION.
   ENDMETHOD.
 
   METHOD validateStatus.
+*  -----------------------------------------------------------------------------------------------------------------------------------------
+*  validateStatus realiza la validación del Campo Estatus
+*  -----------------------------------------------------------------------------------------------------------------------------------------
 *   Leer entidades
     READ ENTITIES OF z_r_inc_algn IN LOCAL MODE
      ENTITY Incidentes
