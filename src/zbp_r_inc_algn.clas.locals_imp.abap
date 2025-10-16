@@ -451,6 +451,20 @@ CLASS lhc_Incidentes IMPLEMENTATION.
                                ) TO reported-incidentes.
         ENDIF.
 
+       "Se valida el campo Creación de Fecha no sea una fecha futura
+        IF <incidente>-CreationDate > cl_abap_context_info=>get_system_date( ).
+            APPEND VALUE #( %tky = <incidente>-%tky ) to failed-incidentes.
+
+              APPEND VALUE #( %tky = <incidente>-%tky
+                              %msg = NEW zcl_incident_mensajes_algn( gcv_textid = zcl_incident_mensajes_algn=>error_fecha_creacion_fut
+*                                                                       gcv_status = lv_status_text
+                                                                     gcv_severity = if_abap_behv_message=>severity-error )
+                              %element-status = if_abap_behv=>mk-on
+                              %state_area =  'VALIDATE_COMPONENT'
+                               ) TO reported-incidentes.
+        ENDIF.
+
+
     ENDLOOP.
 
   ENDMETHOD.

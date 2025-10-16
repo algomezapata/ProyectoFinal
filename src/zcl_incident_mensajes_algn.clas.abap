@@ -80,7 +80,17 @@ CLASS zcl_incident_mensajes_algn DEFINITION
         attr2 TYPE scx_attrname VALUE '',
         attr3 TYPE scx_attrname VALUE '',
         attr4 TYPE scx_attrname VALUE '',
-      END OF error_fecha_creacion.
+      END OF error_fecha_creacion,
+
+*     Mensaje Fecha Creacion Futura
+      BEGIN OF error_fecha_creacion_fut,
+        msgid TYPE symsgid VALUE 'ZMS_INCIDENTES_ALGN',
+        msgno TYPE symsgno VALUE '008',
+        attr1 TYPE scx_attrname VALUE 'gv_create_date',
+        attr2 TYPE scx_attrname VALUE '',
+        attr3 TYPE scx_attrname VALUE '',
+        attr4 TYPE scx_attrname VALUE '',
+      END OF error_fecha_creacion_fut.
 
 *   Metodo Constructor con los parametros necesarios para lanzar el mensaje
     METHODS constructor IMPORTING gcv_status     TYPE char10 OPTIONAL
